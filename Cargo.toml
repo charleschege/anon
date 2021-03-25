@@ -4,6 +4,7 @@ members = [
 	"pallets/merkle",
 	"pallets/mixer",
 	"runtime",
+	"contracts/wasm/merkle_extension"
 ]
 
 [profile.dev.package]
