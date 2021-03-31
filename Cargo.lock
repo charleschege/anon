@@ -3901,22 +3901,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
-name = "merkle_extension"
+name = "merkle-extension"
 version = "0.1.0"
 dependencies = [
- "frame-support",
- "frame-system",
  "funty",
  "ink_env",
  "ink_lang",
  "ink_metadata",
  "ink_primitives",
  "ink_storage",
- "pallet-merkle 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-scale-codec 2.0.1",
  "scale-info",
- "sp-runtime",
- "webb-bulletproofs",
 ]
 
 [[package]]
@@ -4229,7 +4224,7 @@ dependencies = [
  "pallet-evm",
  "pallet-evm-precompile-simple",
  "pallet-grandpa",
- "pallet-merkle 3.0.0",
+ "pallet-merkle",
  "pallet-mixer",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
@@ -4693,29 +4688,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-merkle"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdbb59dab534d08e0772479b1dc8649fa5eb1a9e2ca697c9805036c31bbf7997"
-dependencies = [
- "bulletproofs-gadgets",
- "curve25519-dalek 3.0.2",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "merlin",
- "pallet-balances",
- "parity-scale-codec 2.0.1",
- "rand_core 0.5.1",
- "serde",
- "sha2 0.9.3",
- "sp-io",
- "sp-runtime",
- "sp-std 3.0.0",
- "webb-bulletproofs",
-]
-
-[[package]]
 name = "pallet-mixer"
 version = "3.0.0"
 dependencies = [
@@ -4730,7 +4702,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-merkle 3.0.0",
+ "pallet-merkle",
  "parity-scale-codec 2.0.1",
  "serde",
  "sp-core",

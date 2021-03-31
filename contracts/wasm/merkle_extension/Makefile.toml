@@ -5,6 +5,13 @@ args = ["+nightly", "check"]
 watch = { ignore_pattern = "target"}
 dependencies = ["format"]
 
+[tasks.build]
+command = "cargo"
+description = "check the contract syntax is correct the contract"
+args = ["+nightly", "contract", "build"]
+watch = { ignore_pattern = "target"}
+dependencies = ["format"]
+
 [tasks.format]
 command = "cargo"
 description = "format code with default settings"

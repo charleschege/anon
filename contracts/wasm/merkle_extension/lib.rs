@@ -1,258 +1,173 @@
+// Copyright 2018-2021 Parity Technologies (UK) Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_system::Origin;
 use ink_env::Environment;
 use ink_lang as ink;
-use pallet_merkle::{
-	traits::dispatch::PostDispatchInfo,
-	utils::keys::{Commitment, ScalarData},
-	Pallet,
-};
 
+use frame_support::traits::PalletInfo;
+use frame_support::weights::Pays;
+use frame_support::{pallet, traits::Get};
+use frame_system::RawOrigin;
+use pallet_merkle::traits::dispatch::PostDispatchInfo;
+use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-	DispatchErrorWithPostInfo, Perbill,
+    testing::Header,
+    traits::{BlakeTwo256, IdentityLookup},
+    Perbill,
 };
+/// This is an example of how ink! contract should
+/// call substrate runtime `RandomnessCollectiveFlip::random_seed`.
 
-///Custom pallet-merkle extension to read and write from the runtime
+/// Define the operations to interact with the substrate runtime
+
 #[ink::chain_extension]
-pub trait RuntimeMerkleExtension {
-	type ErrorCode = MerkleExtensionError;
+pub trait MerkleExtensionTrait {
+    type ErrorCode = PalletMerkleExtError;
 
-	///Create a Group
-	#[ink(extension = 1)]
-	fn create_group(r_is_mgt: bool, depth: Option<u8>) -> Result<PostDispatchInfo, MerkleExtensionError>;
+    // Create a group
+    #[ink(extension = 1101, returns_result = false)]
+    fn create_group() -> Result<CustomPostDispatchInfo, PalletMerkleExtError>;
 
-	///Add Members to a Group
-	#[ink(extension = 2)]
-	fn get_group(group_id: u32, members: Vec<ScalarData>) -> Result<PostDispatchInfo, MerkleExtensionError>;
+    // Get Group
+    #[ink(extension = 1102, returns_result = false)]
+    fn add_elements() -> Result<CustomPostDispatchInfo, PalletMerkleExtError>;
 
-	///Verify Membership proof
-	#[ink(extension = 3)]
-	fn verify_membership(
-		cached_root: ScalarData,
-		comms: Vec<Commitment>,
-		nullifier_hash: ScalarData,
-		proof_bytes: Vec<u8>,
-		leaf_index_commitments: Vec<Commitment>,
-		proof_commitments: Vec<Commitment>,
-		recipient: ScalarData,
-		relayer: ScalarData,
-	) -> Result<(), MerkleExtensionError>;
+    // Get Group
+    #[ink(extension = 1103, returns_result = false)]
+    fn verify_group() -> Result<CustomPostDispatchInfo, PalletMerkleExtError>;
 }
 
-#[derive(scale::Encode, scale::Decode, scale_info::TypeInfo)]
-pub enum MerkleExtensionError {
-	InvalidCall,
-	GroupCreationError,
-	AddElementsError,
-	MemberVerificationError,
-	DispatchError, //TODO (DispatchErrorWithPostInfo<PostDispatchInfo>),
-	ParityCodec,   //TODO (scale::Error),
-	EncounteredUnknownStatusCode,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, scale::Encode, scale::Decode, scale_info::TypeInfo)]
+pub enum PalletMerkleExtError {
+    InvalidGroupCreation,
+    CannotAddProvidedElementsToGroup,
+    CouldNotVerifyGroup,
+    InvalidScaleEncoding,
+    EncounteredUnknownStatusCode,
 }
 
-impl From<DispatchErrorWithPostInfo<PostDispatchInfo>> for MerkleExtensionError {
-	fn from(error_code: DispatchErrorWithPostInfo<PostDispatchInfo>) -> MerkleExtensionError {
-		Self::DispatchError //(error_code)
-	}
+impl From<scale::Error> for PalletMerkleExtError {
+    fn from(_: scale::Error) -> Self {
+        Self::InvalidScaleEncoding
+    }
 }
 
-impl From<scale::Error> for MerkleExtensionError {
-	fn from(error_code: scale::Error) -> MerkleExtensionError {
-		Self::ParityCodec //TODO (error_code)
-	}
+impl ink_env::chain_extension::FromStatusCode for PalletMerkleExtError {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+            0 => Ok(()),
+            1101 => Err(Self::InvalidGroupCreation),
+            1102 => Err(Self::CannotAddProvidedElementsToGroup),
+            1103 => Err(Self::CouldNotVerifyGroup),
+            _ => Err(Self::EncounteredUnknownStatusCode),
+        }
+    }
 }
 
-impl ink_env::chain_extension::FromStatusCode for MerkleExtensionError {
-	fn from_status_code(status_code: u32) -> Result<(), Self> {
-		match status_code {
-			0 => Ok(()),
-			1 => Err(Self::GroupCreationError),
-			2 => Err(Self::AddElementsError),
-			3 => Err(Self::MemberVerificationError),
-			_ => Err(Self::EncounteredUnknownStatusCode),
-		}
-	}
+// Custom `frame_support::weights::Pays`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, scale::Encode, scale::Decode, scale_info::TypeInfo)]
+pub enum CustomPays {
+    Yes,
+    No,
 }
 
-pub enum PalletMerkleEnvironment {}
-
-impl Environment for PalletMerkleEnvironment {
-	type AccountId = <ink_env::DefaultEnvironment as Environment>::AccountId;
-	type Balance = <ink_env::DefaultEnvironment as Environment>::Balance;
-	type BlockNumber = <ink_env::DefaultEnvironment as Environment>::BlockNumber;
-	type ChainExtension = RuntimeMerkleExtension;
-	type Hash = <ink_env::DefaultEnvironment as Environment>::Hash;
-	type Timestamp = <ink_env::DefaultEnvironment as Environment>::Timestamp;
-
-	const MAX_EVENT_TOPICS: usize = <ink_env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+impl From<Pays> for CustomPays {
+    fn from(value: Pays) -> Self {
+        match value {
+            Pays::Yes => CustomPays::Yes,
+            Pays::No => CustomPays::No,
+        }
+    }
 }
 
-#[ink::contract(env = crate::PalletMerkleEnvironment)]
-mod merkle_extension {
-	use super::*;
-	use frame_support::weights::Pays;
-
-	#[ink(storage)]
-	#[derive(Clone, PartialEq, Eq)]
-	pub struct MerkleExtension {
-		weight: Option<u64>,
-		pays_fee: bool,
-	}
-
-	impl<T: frame_system::Config> frame_system::Config for MerkleExtension {
-		type AccountData = u64;
-		type AccountId = u64;
-		type BaseCallFilter = ();
-		type BlockHashCount = u64;
-		type BlockLength = ();
-		type BlockNumber = u64;
-		type BlockWeights = ();
-		type Call = pallet_merkle::pallet::Call<T>;
-		type DbWeight = ();
-		type Event = Self::Event;
-		type Hash = sp_runtime::testing::H256;
-		type Hashing = BlakeTwo256;
-		type Header = Header;
-		type Index = u64;
-		type Lookup = IdentityLookup<Self::AccountId>;
-		type OnKilledAccount = ();
-		type OnNewAccount = ();
-		type Origin = u64;
-		type PalletInfo = Self::PalletInfo;
-		type SS58Prefix = u8;
-		type SystemWeightInfo = ();
-		type Version = ();
-	}
-
-	impl MerkleExtension {
-		#[ink(constructor)]
-		pub fn new() -> Self {
-			Self {
-				weight: Option::default(),
-				pays_fee: bool::default(),
-			}
-		}
-
-		#[ink(message)]
-		pub fn create_group(
-			&mut self,
-			r_is_mgr: bool,
-			_depth: Option<u8>,
-		) -> Result<PostDispatchInfo, MerkleExtensionError> {
-			let origin = self.env().account_id();
-
-			let new_group = Pallet::<Self>::create_group(origin, r_is_mgr, _depth)?;
-
-			self.weight = new_group.actual_weight;
-
-			match new_group.pays_fee {
-				Pays::Yes => self.pays_fee = true,
-				Pays::No => self.pays_fee = false,
-			}
-
-			Ok(new_group)
-		}
-
-		#[ink(message)]
-		pub fn get_group(&self) {
-			//self.value = !self.value;
-		}
-	}
+impl From<CustomPays> for Pays {
+    fn from(value: CustomPays) -> Self {
+        match value {
+            CustomPays::Yes => Pays::Yes,
+            CustomPays::No => Pays::No,
+        }
+    }
 }
 
-/*
-use ink_env::AccountId;
-use ink_lang as ink;
-
-#[ink::contract]
-mod merkle_extension {
-	use pallet_merkle::{
-		traits::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
-		utils::keys::{Commitment, ScalarData},
-		Config, Pallet,
-	};
-
-	#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-	pub enum MerkleExtensionError {
-		FailedToPerformOperation,
-	}
-
-	impl ink_env::chain_extension::FromStatusCode for MerkleExtensionError {
-		fn from_status_code(status_code: u32) -> Result<(), Self> {
-			match status_code {
-				0 => Ok(()),
-				1 => Err(Self::FailedToPerformOperation),
-				_ => panic!("encountered unknown status code"),
-			}
-		}
-	}
-
-	pub type MerkleResult<T> = Result<T, MerkleExtensionError>;
-
-	/// Defines the storage of your contract.
-	/// Add new fields to the below struct in order
-	/// to add new static storage fields to your contract.
-	#[ink(storage)]
-	#[derive(Clone, PartialEq, Eq)]
-	pub struct MerkleExtension {
-		account_id: AccountId,
-	}
-
-	impl Config for MerkleExtension {}
-
-	impl frame_system::pallet::Config for MerkleExtension {}
-
-	impl MerkleExtension {
-		#[ink(constructor)]
-		pub fn new() -> Self {
-			let account_id = Self::env().account_id();
-
-			Self { account_id }
-		}
-
-		#[ink(message)]
-		pub fn create_group(&self, r_is_mgr: bool, _depth: Option<u8>) -> MerkleResult<()> {
-			let origin = Self::env().account_id();
-			match Pallet::<MerkleExtension>::create_group(origin, r_is_mgr, _depth) {
-				Ok(_) => Ok(()),
-				Err(_) => Err(MerkleExtensionError::FailedToPerformOperation),
-			}
-		}
-
-		#[ink(message)]
-		pub fn get_group(&self) {
-			//self.value = !self.value;
-		}
-	}
-	/*
-	/// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-	/// module and test functions are marked with a `#[test]` attribute.
-	/// The below code is technically just normal Rust code.
-	#[cfg(test)]
-	mod tests {
-		/// Imports all the definitions from the outer scope so we can use them
-		/// here.
-		use super::*;
-
-		/// We test if the default constructor does its job.
-		#[test]
-		fn default_works() {
-			let merkle_extension = MerkleExtension::default();
-			assert_eq!(merkle_extension.get(), false);
-		}
-
-		/// We test a simple use case of our contract.
-		#[test]
-		fn it_works() {
-			let mut merkle_extension = MerkleExtension::new(false);
-			assert_eq!(merkle_extension.get(), false);
-			merkle_extension.flip();
-			assert_eq!(merkle_extension.get(), true);
-		}
-	}*/
+// Custom `PostDispatchInfo`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, scale::Encode, scale::Decode, scale_info::TypeInfo)]
+pub struct CustomPostDispatchInfo {
+    pub actual_weight: Option<u64>,
+    pub pays_fee: CustomPays,
 }
-*/
+
+impl From<PostDispatchInfo> for CustomPostDispatchInfo {
+    fn from(value: PostDispatchInfo) -> Self {
+        let actual_weight = value.actual_weight;
+        let pays_fee = match value.pays_fee {
+            Pays::Yes => CustomPays::Yes,
+            Pays::No => CustomPays::No,
+        };
+
+        Self {
+            actual_weight,
+            pays_fee,
+        }
+    }
+}
+
+pub enum CustomEnvironment {}
+
+impl Environment for CustomEnvironment {
+    type AccountId = <ink_env::DefaultEnvironment as Environment>::AccountId;
+    type Balance = <ink_env::DefaultEnvironment as Environment>::Balance;
+    type BlockNumber = <ink_env::DefaultEnvironment as Environment>::BlockNumber;
+    type ChainExtension = MerkleExtensionTrait;
+    type Hash = <ink_env::DefaultEnvironment as Environment>::Hash;
+    type Timestamp = <ink_env::DefaultEnvironment as Environment>::Timestamp;
+
+    const MAX_EVENT_TOPICS: usize = <ink_env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+}
+
+#[ink::contract(env = crate::CustomEnvironment)]
+mod pallet_merkle_operations {
+    use super::{CustomPays, CustomPostDispatchInfo, PalletMerkleExtError};
+    use pallet_merkle::{
+        traits::Group,
+        utils::keys::{Commitment, ScalarData},
+        Pallet,
+    };
+
+    #[ink(storage)]
+    pub struct MerkleExtension;
+
+    impl MerkleExtension {
+        #[ink(constructor)]
+        pub fn new() -> Self {
+            Self {}
+        }
+
+        #[ink(message)]
+        pub fn create_group(&self) -> Result<CustomPostDispatchInfo, PalletMerkleExtError> {
+            self.env().extension().create_group()?
+        }
+
+        #[ink(message)]
+        pub fn add_elements(&self) -> Result<CustomPostDispatchInfo, PalletMerkleExtError> {
+            self.env().extension().add_elements()?
+        }
+
+        #[ink(message)]
+        pub fn verify_group(&self) -> Result<CustomPostDispatchInfo, PalletMerkleExtError> {
+            self.env().extension().verify_group()?
+        }
+    }
+}

@@ -1,29 +1,31 @@
 [package]
-name = "merkle_extension"
+name = "tests"
 version = "0.1.0"
-authors = ["Charles Chege <charleschege@protonmail.ch>"]
+authors = ["[your_name] <[your_email]>"]
 edition = "2018"
 
 [dependencies]
-pallet-merkle = "3.0.0"
 ink_primitives = { version = "3.0.0-rc3", default-features = false }
 ink_metadata = { version = "3.0.0-rc3", default-features = false, features = ["derive"], optional = true }
 ink_env = { version = "3.0.0-rc3", default-features = false }
 ink_storage = { version = "3.0.0-rc3", default-features = false }
 ink_lang = { version = "3.0.0-rc3", default-features = false }
-scale-info = { version = "0.6.0", default-features = false, features = ["derive"], optional = true }
+
 scale = { package = "parity-scale-codec", version = "2.0.1", default-features = false, features = ["derive"] }
+scale-info = { version = "0.6.0", default-features = false, features = ["derive"], optional = true }
 
 # Should be removed once bitvecto-rs/bitvec#105 is resolved
 funty = "=1.1.0"
-webb-bulletproofs = "2.0.0"
-sp-runtime = "3.0.0"
-frame-system = "3.0.0"
 frame-support = "3.0.0"
-#parity-scale-codec = { version = "2.0.1", default-features = false }
+frame-system = "3.0.0"
+sp-runtime = "3.0.0"
+sp-core = "3.0.0"
+sp-std = "3.0.0"
+pallet-merkle = "3.0.0"
+pallet-contracts = "3.0.0"
 
 [lib]
-name = "merkle_extension"
+name = "tests"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
@@ -37,7 +39,11 @@ std = [
     "ink_env/std",
     "ink_storage/std",
     "ink_primitives/std",
-    "scale/std",
+    "sp-runtime/std",
+    "sp-runtime/std",
     "scale-info/std",
+    "sp-std/std",
+    "pallet-contracts/std",
+    "frame-support/std",
 ]
 ink-as-dependency = []
